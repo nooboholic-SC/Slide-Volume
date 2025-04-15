@@ -1,0 +1,55 @@
+modules = ["nodejs-20"]
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Android Build"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Volume Slider Demo"
+
+[[workflows.workflow]]
+name = "Android Build"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./gradlew assembleDebug"
+
+[[workflows.workflow]]
+name = "Volume Slider Demo"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node VolumeSlider/index.js"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "./gradlew assembleDebug"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
