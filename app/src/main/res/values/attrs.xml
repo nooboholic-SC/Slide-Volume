@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom attributes for the VolumeSliderView -->
+    <declare-styleable name="VolumeSliderView">
+        <attr name="sliderWidth" format="dimension" />
+        <attr name="trackColor" format="color" />
+        <attr name="progressColor" format="color" />
+        <attr name="thumbColor" format="color" />
+    </declare-styleable>
+</resources>

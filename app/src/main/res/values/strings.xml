@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Volume Slider</string>
+    <string name="app_instructions">Slide up and down on the right edge to control system volume</string>
+</resources>
