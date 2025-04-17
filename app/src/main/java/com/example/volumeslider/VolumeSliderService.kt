@@ -17,6 +17,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import android.view.View
 
 class VolumeSliderService : Service() {
     companion object {
@@ -159,7 +160,18 @@ class VolumeSliderService : Service() {
             isSliderAdded = true
         }
 
+        // Set the sensitivity to slider
         volumeSlider?.setSliderSensitivity(sensitivity.toFloat())
+
+        volumeSlider?.visibilityHandler = object : VolumeSliderView.VisibilityHandler {
+            override fun show() {
+                volumeSlider?.visibility = View.VISIBLE
+            }
+            override fun hide() {
+                volumeSlider?.visibility = View.INVISIBLE
+            }
+            override fun isVisible(): Boolean = volumeSlider?.visibility == View.VISIBLE
+        }
     }
 
     private fun changeVolume(volumePercent: Float) {
@@ -174,6 +186,7 @@ class VolumeSliderService : Service() {
             when (it.action) {
                 "UPDATE_SETTINGS" -> setSensitivity(it.getIntExtra("sensitivity", 50))
                 "UPDATE_SETTINGS" -> setActiveEdge(it.getStringExtra("activeEdge") ?: "right")
+                "UPDATE_VISIBILITY" -> updateSliderVisibility(it.getBooleanExtra("isVisible",false))
                 "STOP_SERVICE" -> stopSelf()
             }
         }
@@ -184,6 +197,14 @@ class VolumeSliderService : Service() {
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
+
+     fun updateSliderVisibility(isVisible: Boolean) {
+            if (isVisible) {
+                volumeSlider?.visibilityHandler?.show()
+            } else {
+                volumeSlider?.visibilityHandler?.hide()
+            }
+        }
 
     // Cleanup on service destruction
     override fun onDestroy() {

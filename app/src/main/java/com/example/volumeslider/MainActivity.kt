@@ -1,5 +1,6 @@
 package com.example.volumeslider
 
+import android.app.ActivityManager
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
@@ -13,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
+
     
     private val OVERLAY_PERMISSION_REQUEST_CODE = 1234
 
@@ -25,23 +27,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize variables
-        //ipInput = findViewById(R.id.server_ip_input)
-        //val connectButton: Button = findViewById(R.id.connect_button)
-        //val serviceButton: Button = findViewById(R.id.service_button)
-        
-        // Check for overlay permission
         checkOverlayPermission()
         
-        // Setup sensitivity slider
         val sensitivitySlider: SeekBar = findViewById(R.id.sensitivity_slider)
         sensitivitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     sensitivity = progress
                     updateServiceSettings()
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            }
+            }override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
@@ -60,7 +53,21 @@ class MainActivity : AppCompatActivity() {
    //         }
    //         serviceEnabled = !serviceEnabled
    //         updateServiceSettings()
-   //     }
+   //   }
+    val edgeSwitch: Switch = findViewById(R.id.edge_switch)
+    edgeSwitch.setOnCheckedChangeListener { _, isChecked ->
+        activeEdge = if (isChecked) {
+            "left"
+        } else {
+            "right"
+        }
+        updateServiceSettings()
+    }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateSliderVisibility(true)
     }
     
   private lateinit var ipInput: android.widget.EditText
@@ -81,6 +88,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    override fun onPause() {
+        super.onPause()
+        updateSliderVisibility(false)
+    }
+    
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
@@ -88,8 +100,6 @@ class MainActivity : AppCompatActivity() {
                 if (Settings.canDrawOverlays(this)) {
                     startVolumeSliderService()
                 } else {
-                    Toast.makeText(this, "Overlay permission denied. Service can't run in background.", Toast.LENGTH_LONG).show()
-                    // Disable service switch since permissions not granted
                     // findViewById<Switch>(R.id.service_switch).isChecked = false // Assuming you might have a service switch later.
                     serviceEnabled = false // Service disabled
             }
@@ -105,8 +115,9 @@ class MainActivity : AppCompatActivity() {
        } else {
           startService(intent)
        }
-        updateServiceSettings()
     }
+
+    
     
    @SuppressLint("ObsoleteSdkInt")
    fun toggleService(enabled: Boolean) {
@@ -134,4 +145,14 @@ class MainActivity : AppCompatActivity() {
             }
        }
     }
+
+     private fun updateSliderVisibility(isVisible: Boolean) {
+        val intent = Intent(this, VolumeSliderService::class.java).apply {
+            action = "UPDATE_SLIDER_VISIBILITY"
+            putExtra("isVisible", isVisible)
+        }
+        startService(intent)
+    }
+
+
 }
