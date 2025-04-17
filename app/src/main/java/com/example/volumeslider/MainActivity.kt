@@ -1,24 +1,19 @@
 package com.example.volumeslider
 
-import android.content.Context
-import android.media.AudioManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import androidx.appcompat.app.AppCompatActivity
-import android.widget.Toast
+import android.provider.Settings
 import android.widget.RadioGroup
-import android.widget.CompoundButton
 import android.widget.SeekBar
 import android.widget.Switch
-import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     
-    private lateinit var volumeSliderRight: VolumeSliderView
-    private lateinit var volumeSliderLeft: VolumeSliderView
-    private lateinit var audioManager: AudioManager
-    private lateinit var vibrator: Vibrator
+    private val OVERLAY_PERMISSION_REQUEST_CODE = 1234
     
     private var sensitivity: Int = 50
     private var serviceEnabled: Boolean = true
@@ -28,25 +23,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Initialize audio manager
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        
-        // Initialize vibrator service
-        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        
-        // Find views
-        volumeSliderRight = findViewById(R.id.volume_slider_right)
-        volumeSliderLeft = findViewById(R.id.volume_slider_left)
-        
-        // Configure volume sliders
-        setupVolumeSliders()
+        // Check for overlay permission
+        checkOverlayPermission()
         
         // Setup sensitivity slider
         val sensitivitySlider = findViewById<SeekBar>(R.id.sensitivity_slider)
         sensitivitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 sensitivity = progress
-                updateSensitivity()
+                updateServiceSettings()
             }
             
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -58,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         val serviceSwitch = findViewById<Switch>(R.id.service_switch)
         serviceSwitch.setOnCheckedChangeListener { _, isChecked ->
             serviceEnabled = isChecked
-            updateServiceState()
+            toggleService(isChecked)
         }
         
         // Setup edge selection
@@ -69,97 +54,81 @@ class MainActivity : AppCompatActivity() {
                 R.id.edge_left -> activeEdge = "left"
                 R.id.edge_both -> activeEdge = "both"
             }
-            updateActiveEdge()
+            updateServiceSettings()
         }
-        
-        // Initial settings
-        updateSensitivity()
-        updateServiceState()
-        updateActiveEdge()
     }
     
-    private fun setupVolumeSliders() {
-        // Set up the right volume slider
-        volumeSliderRight.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
-            override fun onVolumeChanged(volumePercent: Float) {
-                changeVolume(volumePercent)
-                // Provide haptic feedback
-                provideHapticFeedback()
+    private fun checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+            } else {
+                // Permission already granted, start service
+                startVolumeSliderService()
             }
-        })
-        
-        // Set up the left volume slider
-        volumeSliderLeft.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
-            override fun onVolumeChanged(volumePercent: Float) {
-                changeVolume(volumePercent)
-                // Provide haptic feedback
-                provideHapticFeedback()
-            }
-        })
-    }
-    
-   private fun changeVolume(volumePercent: Float) {
-    // Get max volume level
-    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-    
-    // Calculate new volume level
-    val newVolume = (maxVolume * volumePercent / 100).toInt()
-    
-    // Set volume with UI flag
-    audioManager.setStreamVolume(
-        AudioManager.STREAM_MUSIC,
-        newVolume,
-        AudioManager.FLAG_SHOW_UI
-    )
-    
-    // Show current volume as a toast message
-    Toast.makeText(this, "Volume: $newVolume/$maxVolume", Toast.LENGTH_SHORT).show()
-}
-    
-    private fun provideHapticFeedback() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE))
         } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(10)
+            // Not needed for lower API levels
+            startVolumeSliderService()
         }
     }
     
-    private fun updateSensitivity() {
-        volumeSliderRight.setSensitivity(sensitivity)
-        volumeSliderLeft.setSensitivity(sensitivity)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    startVolumeSliderService()
+                } else {
+                    Toast.makeText(this, 
+                        "Overlay permission denied. Service can't run in background.", 
+                        Toast.LENGTH_LONG).show()
+                    
+                    // Disable service switch since permissions not granted
+                    findViewById<Switch>(R.id.service_switch).isChecked = false
+                    serviceEnabled = false
+                }
+            }
+        }
     }
     
-    private fun updateServiceState() {
+    private fun startVolumeSliderService() {
+        val intent = Intent(this, VolumeSliderService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+        updateServiceSettings()
+    }
+    
+    private fun toggleService(enabled: Boolean) {
+        if (enabled) {
+            startVolumeSliderService()
+        } else {
+            val intent = Intent(this, VolumeSliderService::class.java)
+            intent.action = "STOP_SERVICE"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }
+    }
+    
+    private fun updateServiceSettings() {
         if (serviceEnabled) {
-            // Enable the active edges based on settings
-            updateActiveEdge()
-        } else {
-            // Disable both edges
-            volumeSliderRight.visibility = View.INVISIBLE
-            volumeSliderLeft.visibility = View.INVISIBLE
-        }
-    }
-    
-    private fun updateActiveEdge() {
-        if (!serviceEnabled) {
-            volumeSliderRight.visibility = View.INVISIBLE
-            volumeSliderLeft.visibility = View.INVISIBLE
-            return
-        }
-        
-        when (activeEdge) {
-            "right" -> {
-                volumeSliderRight.visibility = View.VISIBLE
-                volumeSliderLeft.visibility = View.INVISIBLE
-            }
-            "left" -> {
-                volumeSliderRight.visibility = View.INVISIBLE
-                volumeSliderLeft.visibility = View.VISIBLE
-            }
-            "both" -> {
-                volumeSliderRight.visibility = View.VISIBLE
-                volumeSliderLeft.visibility = View.VISIBLE
+            val intent = Intent(this, VolumeSliderService::class.java)
+            intent.action = "UPDATE_SETTINGS"
+            intent.putExtra("sensitivity", sensitivity)
+            intent.putExtra("activeEdge", activeEdge)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
             }
         }
     }
