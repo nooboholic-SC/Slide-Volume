@@ -1,19 +1,24 @@
 package com.example.volumeslider
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.media.AudioManager
-import android.os.*
-import android.view.*
-import android.widget.Toast
+import android.os.Build
+import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.view.Gravity
+import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 
 class VolumeSliderService : Service() {
-    private lateinit var windowManager: WindowManager
-    private lateinit var volumeSliderLeft: VolumeSliderView
-    private lateinit var audioManager: AudioManager
     companion object {
         private const val NOTIFICATION_ID = 1001
     }
@@ -21,14 +26,16 @@ class VolumeSliderService : Service() {
 
     private lateinit var vibrator: Vibrator
 
+    private lateinit var windowManager: WindowManager
+    private lateinit var audioManager: AudioManager
+    private var volumeSlider: VolumeSliderView? = null
     private var sensitivity: Int = 50
-    private var activeEdge: String = "right"
+    private var activeEdge: String = "right" // Default to right edge
+    private val CHANNEL_ID = "VolumeSliderChannel" // Notification channel ID
+    private var viewParams: WindowManager.LayoutParams? = null
+    private var isSliderAdded = false // Track if slider is currently added to the window
 
-    // Notification channel ID for foreground service
-    private val CHANNEL_ID = "VolumeSliderChannel"
-    private var rightViewParams: WindowManager.LayoutParams? = null
-    
-
+    // Service lifecycle methods
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -41,6 +48,7 @@ class VolumeSliderService : Service() {
         createVolumeSliders()
     }
 
+    // Notification-related methods
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -73,34 +81,41 @@ class VolumeSliderService : Service() {
     }
 
     private fun createVolumeSliders() {
-        // Layout params for right edge
-        rightViewParams = WindowManager.LayoutParams(
-            100,
+        // Initialize view parameters
+        viewParams = WindowManager.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
             (resources.displayMetrics.heightPixels * 0.6).toInt(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL//Gravity.START or Gravity.CENTER_VERTICAL
+            // Initial gravity will be updated in updateActiveEdge()
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
             x = 0
             y = 0
         }
 
-        // Create Slider
-        volumeSliderLeft = VolumeSliderView(this)
-        volumeSliderLeft.layoutParams = ViewGroup.LayoutParams(100, ViewGroup.LayoutParams.MATCH_PARENT)
-        volumeSliderLeft.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
+        // Create SliderView
+        volumeSlider = VolumeSliderView(this)
+        volumeSlider?.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
             override fun onVolumeChanged(volumePercent: Float) {
                 changeVolume(volumePercent)
                 provideHapticFeedback()
             }
         })
-        rightViewParams?.let { windowManager.addView(volumeSliderLeft, it) }
+
+        // Set default values
+        updateActiveEdge()
     }
 
+
+    // Vibration feedback method
     private fun provideHapticFeedback() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE))
@@ -109,22 +124,42 @@ class VolumeSliderService : Service() {
             vibrator.vibrate(10)
         }
     }
+
+    // Setting methods
     private fun setSensitivity(value: Int) {
         sensitivity = value
     }
 
+    // Update and change edge side
     fun setActiveEdge(edge: String) {
-        activeEdge = edge
+        activeEdge = edge.lowercase()
         updateActiveEdge()
     }
 
     private fun updateActiveEdge() {
-        try {
-             windowManager.removeView(volumeSliderLeft)
-        } catch (e: Exception) {
-            //View not present
+        // Remove slider from window if it exists
+        if (isSliderAdded && volumeSlider != null) {
+            windowManager.removeView(volumeSlider)
+            isSliderAdded = false
         }
-        rightViewParams?.let { windowManager.addView(volumeSliderLeft, it) }
+
+        // Update gravity based on active edge
+        viewParams?.gravity = when (activeEdge) {
+            "left" -> Gravity.START or Gravity.CENTER_VERTICAL
+            "right" -> Gravity.END or Gravity.CENTER_VERTICAL
+            else -> Gravity.END or Gravity.CENTER_VERTICAL // Default to right
+        }
+
+        // Set x-offset to align with the edge
+        viewParams?.x = 0
+
+        // Add the view with updated params
+        if (volumeSlider != null) {
+            windowManager.addView(volumeSlider, viewParams)
+            isSliderAdded = true
+        }
+
+        volumeSlider?.setSliderSensitivity(sensitivity.toFloat())
     }
 
     private fun changeVolume(volumePercent: Float) {
@@ -133,6 +168,7 @@ class VolumeSliderService : Service() {
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
     }
 
+    // Service commands
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             when (it.action) {
@@ -143,18 +179,22 @@ class VolumeSliderService : Service() {
         }
         return START_STICKY
     }
+
+    // Binding method
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
+    // Cleanup on service destruction
     override fun onDestroy() {
         super.onDestroy()
-        // Clean up views
-        try {
-            windowManager.removeView(volumeSliderLeft)
-        } catch (e: Exception) {
-            // View not present
+        // Remove the view from the window if it was added
+        if (isSliderAdded && volumeSlider != null) {
+            windowManager.removeView(volumeSlider)
+            isSliderAdded = false
         }
+        // Remove slider reference
+        volumeSlider = null
     }
 
 

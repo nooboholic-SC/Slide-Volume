@@ -14,11 +14,20 @@ class VolumeSliderView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
     companion object {
-        const val SENSITIVITY = 100f
+        const val DEFAULT_SENSITIVITY = 100f
+    }
+    // Interface for handling slider visibility
+    interface VisibilityHandler {
+        fun show()
+        fun hide()
+        fun isVisible(): Boolean
     }
 
     // Interface for volume change callback
+    var visibilityHandler: VisibilityHandler? = null
+
     interface OnVolumeChangeListener {
         fun onVolumeChanged(volumePercent: Float) 
     }
@@ -31,6 +40,7 @@ class VolumeSliderView @JvmOverloads constructor(
     // Drawing dimensions
     private val trackWidth = 6f  // Narrow track (6dp)
     private val thumbRadius = 7f  // Smaller thumb (14dp diameter)
+    private var sliderSensitivity = DEFAULT_SENSITIVITY
     private val cornerRadius = 3f // Rounded corners// Volume range
     private val volumeRange = 100f
     // Track and thumb rectangles
@@ -64,14 +74,23 @@ class VolumeSliderView @JvmOverloads constructor(
         thumbStrokePaint.style = Paint.Style.STROKE
         thumbStrokePaint.strokeWidth = 1.5f
     }
+    init {
+        // Make the slider invisible by default
+        visibility = View.INVISIBLE
+        // Set a default visibility handler
+        visibilityHandler = object : VisibilityHandler {
+            override fun show() { visibility = View.VISIBLE }
+            override fun hide() { visibility = View.INVISIBLE }
+            override fun isVisible(): Boolean = visibility == View.VISIBLE
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        // Position the track at the left edge
-        val left = 0f
-        trackRect.set(left + trackWidth, 0f, left + trackWidth * 2, height.toFloat())
-
+        // Position the track at the right edge
+        val right = width.toFloat()
+        trackRect.set(right - trackWidth * 2, 0f, right - trackWidth, height.toFloat())
         // Update the fill rect
         updateFillRect()
     }
@@ -97,16 +116,11 @@ class VolumeSliderView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                 val thumbCenterY = height * (1 - volumePercent / 100)
-                 val isTouchedInsideThumb = isPointInsideThumb(event.x, event.y, trackRect.centerX(), thumbCenterY, thumbRadius)
-                if (isTouchedInsideThumb) {
-                    isDragging = true
-                    startY = event.y
-                    startPercent = volumePercent
-                    return true
-
-                }
-
+                isDragging = true
+                startY = event.y
+                startPercent = volumePercent
+                return true
+           
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -115,7 +129,7 @@ class VolumeSliderView @JvmOverloads constructor(
                     val deltaY = startY - event.y
 
                     // Calculate change in volume percent based on view height
-                    val percentChange = (deltaY / height) * volumeRange
+                    val percentChange = (deltaY / height) * sliderSensitivity
                     val newVolumePercent = (startPercent + percentChange).coerceIn(0f, volumeRange)
 
                     // Update volume percent and startY (for next movement)
@@ -143,13 +157,6 @@ class VolumeSliderView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
-    private fun isPointInsideThumb(x: Float, y: Float, centerX: Float, centerY: Float, radius: Float): Boolean {
-        val dx = x - centerX
-        val dy = y - centerY
-        val distanceSquared = dx * dx + dy * dy
-        return distanceSquared <= radius * radius
-    }
-
     private fun updateFillRect() {
         fillRect.set(
             trackRect.left,
@@ -172,4 +179,8 @@ class VolumeSliderView @JvmOverloads constructor(
     fun setOnVolumeChangeListener(listener: OnVolumeChangeListener) {
         volumeChangeListener = listener
     }
+     fun setSliderSensitivity(sensitivity: Float) {
+        sliderSensitivity = sensitivity
+    }
+
 }
