@@ -97,10 +97,9 @@ class VolumeSliderView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // Check if touch is within the left 15% of the screen width
-                val touchableWidth = width * 0.15f
-                val touchableRect = RectF(0f, 0f, touchableWidth, height.toFloat())
-                if (touchableRect.contains(event.x, event.y)) {
+                 val thumbCenterY = height * (1 - volumePercent / 100)
+                 val isTouchedInsideThumb = isPointInsideThumb(event.x, event.y, trackRect.centerX(), thumbCenterY, thumbRadius)
+                if (isTouchedInsideThumb) {
                     isDragging = true
                     startY = event.y
                     startPercent = volumePercent
@@ -142,6 +141,13 @@ class VolumeSliderView @JvmOverloads constructor(
 
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun isPointInsideThumb(x: Float, y: Float, centerX: Float, centerY: Float, radius: Float): Boolean {
+        val dx = x - centerX
+        val dy = y - centerY
+        val distanceSquared = dx * dx + dy * dy
+        return distanceSquared <= radius * radius
     }
 
     private fun updateFillRect() {
