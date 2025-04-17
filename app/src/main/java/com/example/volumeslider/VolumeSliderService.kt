@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 
 class VolumeSliderService : Service() {
     private lateinit var windowManager: WindowManager
-    private lateinit var volumeSliderRight: VolumeSliderView
     private lateinit var volumeSliderLeft: VolumeSliderView
     private lateinit var audioManager: AudioManager
     private lateinit var vibrator: Vibrator
@@ -98,18 +97,7 @@ class VolumeSliderService : Service() {
         )
         leftViewParams?.gravity = Gravity.START or Gravity.CENTER_VERTICAL
         
-        // Create right slider
-        volumeSliderRight = VolumeSliderView(this)
-        volumeSliderRight.layoutParams = ViewGroup.LayoutParams(36, ViewGroup.LayoutParams.MATCH_PARENT)
-        volumeSliderRight.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
-            override fun onVolumeChanged(volumePercent: Float) {
-                changeVolume(volumePercent)
-                provideHapticFeedback()
-            }
-        })
-        
         // Create left slider
-        volumeSliderLeft = VolumeSliderView(this)
         volumeSliderLeft.layoutParams = ViewGroup.LayoutParams(36, ViewGroup.LayoutParams.MATCH_PARENT)
         volumeSliderLeft.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
             override fun onVolumeChanged(volumePercent: Float) {
@@ -123,11 +111,11 @@ class VolumeSliderService : Service() {
     }
     
     private fun changeVolume(volumePercent: Float) {
-        // Get max volume level
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        
-        // Calculate new volume level
-        val newVolume = (maxVolume * volumePercent / 100).toInt()
+        val volumeRange = VolumeSliderView.volumeRange
+
+        // Adjust volume based on the new range
+        val newVolume = (maxVolume * volumePercent / volumeRange).toInt()
         
         // Set volume
         audioManager.setStreamVolume(
@@ -148,7 +136,6 @@ class VolumeSliderService : Service() {
     
     fun setSensitivity(value: Int) {
         sensitivity = value
-        volumeSliderRight.setSensitivity(sensitivity)
         volumeSliderLeft.setSensitivity(sensitivity)
     }
     
@@ -160,10 +147,6 @@ class VolumeSliderService : Service() {
     private fun updateActiveEdge() {
         // Remove any existing views first
         try {
-            windowManager.removeView(volumeSliderRight)
-        } catch (e: Exception) {
-            // View might not be attached
-        }
         
         try {
             windowManager.removeView(volumeSliderLeft)
@@ -174,13 +157,11 @@ class VolumeSliderService : Service() {
         // Add views based on active edge setting
         when (activeEdge) {
             "right" -> {
-                windowManager.addView(volumeSliderRight, rightViewParams)
             }
             "left" -> {
                 windowManager.addView(volumeSliderLeft, leftViewParams)
             }
-            "both" -> {
-                windowManager.addView(volumeSliderRight, rightViewParams)
+            else -> {
                 windowManager.addView(volumeSliderLeft, leftViewParams)
             }
         }
@@ -210,7 +191,6 @@ class VolumeSliderService : Service() {
         super.onDestroy()
         // Clean up views
         try {
-            windowManager.removeView(volumeSliderRight)
             windowManager.removeView(volumeSliderLeft)
         } catch (e: Exception) {
             // Views might not be attached

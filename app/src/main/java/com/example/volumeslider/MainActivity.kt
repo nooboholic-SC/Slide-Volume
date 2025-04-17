@@ -1,13 +1,17 @@
 package com.example.volumeslider
 
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.Settings
-import android.widget.RadioGroup
-import android.widget.SeekBar
-import android.widget.Switch
+import android.util.Log
+import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
@@ -18,10 +22,14 @@ class MainActivity : AppCompatActivity() {
     private var sensitivity: Int = 50
     private var serviceEnabled: Boolean = true
     private var activeEdge: String = "right"
-    
+    private var bound: Boolean = false
+    private var serverIp:String = ""
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        val ipInput = findViewById<EditText>(R.id.server_ip_input)
+        val connectButton = findViewById<Button>(R.id.connect_button)
+        val serviceButton = findViewById<Button>(R.id.service_button)
         
         // Check for overlay permission
         checkOverlayPermission()
@@ -30,29 +38,32 @@ class MainActivity : AppCompatActivity() {
         val sensitivitySlider = findViewById<SeekBar>(R.id.sensitivity_slider)
         sensitivitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                sensitivity = progress
-                updateServiceSettings()
+                    sensitivity = progress
+                    updateServiceSettings()
             }
-            
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
         
-        // Setup service toggle
-        val serviceSwitch = findViewById<Switch>(R.id.service_switch)
-        serviceSwitch.setOnCheckedChangeListener { _, isChecked ->
-            serviceEnabled = isChecked
-            toggleService(isChecked)
+        connectButton.setOnClickListener {
+                serverIp = ipInput.text.toString()
+                Toast.makeText(this, "Connecting to :$serverIp", Toast.LENGTH_SHORT).show()
         }
-        
-        // Setup edge selection
-        val edgeGroup = findViewById<RadioGroup>(R.id.edge_selection)
-        edgeGroup.setOnCheckedChangeListener { _, checkedId ->
-            when (checkedId) {
-                R.id.edge_right -> activeEdge = "right"
-                R.id.edge_left -> activeEdge = "left"
-                R.id.edge_both -> activeEdge = "both"
+        serviceButton.setOnClickListener {
+            if(serviceEnabled)
+            {
+                toggleService(false)
+                serviceButton.text = "Start service"
+            }
+            else
+            {
+                toggleService(true)
+                serviceButton.text = "Stop service"
+
+            }
+            serviceEnabled = !serviceEnabled
+            if(serviceEnabled) {
+                startVolumeSliderService()
             }
             updateServiceSettings()
         }
@@ -68,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                 startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
             } else {
                 // Permission already granted, start service
-                startVolumeSliderService()
+                startVolumeSliderService() 
             }
         } else {
             // Not needed for lower API levels
@@ -86,7 +97,6 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, 
                         "Overlay permission denied. Service can't run in background.", 
                         Toast.LENGTH_LONG).show()
-                    
                     // Disable service switch since permissions not granted
                     findViewById<Switch>(R.id.service_switch).isChecked = false
                     serviceEnabled = false
@@ -103,6 +113,7 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
         updateServiceSettings()
+
     }
     
     private fun toggleService(enabled: Boolean) {

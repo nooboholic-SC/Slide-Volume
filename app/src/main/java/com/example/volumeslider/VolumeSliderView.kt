@@ -14,13 +14,14 @@ class VolumeSliderView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-
+    companion object{
+        const val SENSITIVITY = 100f
+    }
     // Interface for volume change callback
     interface OnVolumeChangeListener {
         fun onVolumeChanged(volumePercent: Float)
     }
-
-    // Paint objects for drawing
+        // Paint objects for drawing
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val thumbPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -29,8 +30,8 @@ class VolumeSliderView @JvmOverloads constructor(
     // Drawing dimensions
     private val trackWidth = 6f  // Narrow track (6dp)
     private val thumbRadius = 7f  // Smaller thumb (14dp diameter)
-    private val cornerRadius = 3f // Rounded corners
-
+    private val cornerRadius = 3f // Rounded corners// Volume range
+    private val volumeRange = 100f
     // Track and thumb rectangles
     private val trackRect = RectF()
     private val fillRect = RectF()
@@ -42,9 +43,6 @@ class VolumeSliderView @JvmOverloads constructor(
     private var isDragging = false
     private var startY = 0f
     private var startPercent = 0f
-
-    // Sensitivity factor - higher values mean less sensitive
-    private var sensitivity = 50f
 
     // Volume change listener
     private var volumeChangeListener: OnVolumeChangeListener? = null
@@ -69,9 +67,9 @@ class VolumeSliderView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        // Position the track centered horizontally
-        val left = (width - trackWidth) / 2
-        trackRect.set(left, 0f, left + trackWidth, height.toFloat())
+        // Position the track at the left edge
+        val left = 0f
+        trackRect.set(left+trackWidth, 0f, left + trackWidth*2, height.toFloat())
 
         // Update the fill rect
         updateFillRect()
@@ -98,52 +96,53 @@ class VolumeSliderView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // Check if touch is within extended touch area (wider than visual track)
-                val touchableWidth = 36f // Much wider touch area (36dp)
-                val left = (width - touchableWidth) / 2
-                val touchableRect = RectF(left, 0f, left + touchableWidth, height.toFloat())
-                
-                if (touchableRect.contains(event.x, event.y)) {
+                // Check if touch is within the left 15% of the screen width
+                val touchableWidth = width * 0.15f
+                val touchableRect = RectF(0f, 0f, touchableWidth, height.toFloat())
+                if (touchableRect.contains(event.x, event.y))
+                {
                     isDragging = true
                     startY = event.y
                     startPercent = volumePercent
                     return true
+
                 }
+
             }
+
             MotionEvent.ACTION_MOVE -> {
                 if (isDragging) {
-                    // Calculate change in Y (inverted for intuitive control)
+                    // Calculate change in Y
                     val deltaY = startY - event.y
-                    
-                    // Apply sensitivity factor - higher value = less sensitive
-                    val adjustedDelta = deltaY * (100f / sensitivity)
-                    
-                    // Calculate percentage change based on view height
-                    val percentChange = (adjustedDelta / height) * 100f
-                    
-                    // Update volume percent
-                    volumePercent = (startPercent + percentChange).coerceIn(0f, 100f)
-                    
+
+                    // Calculate change in volume percent based on view height
+                    val percentChange = (deltaY / height) * volumeRange
+                    val newVolumePercent = (startPercent + percentChange).coerceIn(0f, volumeRange)
+
+                    // Update volume percent and startY (for next movement)
+                    volumePercent = newVolumePercent
+                    startY = event.y // Update startY for smoother continuous movement
+
                     // Update visuals
                     updateFillRect()
                     invalidate()
-                    
+
                     // Notify listener
                     volumeChangeListener?.onVolumeChanged(volumePercent)
-                    
                     return true
                 }
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false
                     return true
                 }
             }
+
         }
         return super.onTouchEvent(event)
     }
-
     private fun updateFillRect() {
         fillRect.set(
             trackRect.left,
@@ -151,7 +150,6 @@ class VolumeSliderView @JvmOverloads constructor(
             trackRect.right,
             height.toFloat()
         )
-    }
 
     fun setVolume(percent: Float) {
         volumePercent = percent.coerceIn(0f, 100f)
@@ -161,10 +159,6 @@ class VolumeSliderView @JvmOverloads constructor(
 
     fun getVolume(): Float {
         return volumePercent
-    }
-
-    fun setSensitivity(sensitivityValue: Int) {
-        sensitivity = sensitivityValue.toFloat()
     }
 
     fun setOnVolumeChangeListener(listener: OnVolumeChangeListener) {
