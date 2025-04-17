@@ -12,6 +12,8 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
@@ -27,16 +29,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val ipInput = findViewById<EditText>(R.id.server_ip_input)
-        val connectButton = findViewById<Button>(R.id.connect_button)
-        val serviceButton = findViewById<Button>(R.id.service_button)
+        val ipInput: EditText = findViewById(R.id.server_ip_input)
+        val connectButton: Button = findViewById(R.id.connect_button)
+        val serviceButton: Button = findViewById(R.id.service_button)
         
         // Check for overlay permission
         checkOverlayPermission()
         
         // Setup sensitivity slider
-        val sensitivitySlider = findViewById<SeekBar>(R.id.sensitivity_slider)
-        sensitivitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        val sensitivitySlider: SeekBar = findViewById(R.id.sensitivity_slider)
+        sensitivitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener { // added object
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     sensitivity = progress
                     updateServiceSettings()
@@ -44,7 +46,7 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-        
+
         connectButton.setOnClickListener {
                 serverIp = ipInput.text.toString()
                 Toast.makeText(this, "Connecting to :$serverIp", Toast.LENGTH_SHORT).show()
@@ -99,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG).show()
                     // Disable service switch since permissions not granted
                     findViewById<Switch>(R.id.service_switch).isChecked = false
-                    serviceEnabled = false
+                    serviceEnabled = false //added
                 }
             }
         }

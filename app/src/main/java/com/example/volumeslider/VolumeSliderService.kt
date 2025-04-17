@@ -14,6 +14,7 @@ class VolumeSliderService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var volumeSliderLeft: VolumeSliderView
     private lateinit var audioManager: AudioManager
+
     private lateinit var vibrator: Vibrator
     
     private var sensitivity: Int = 50
@@ -98,15 +99,16 @@ class VolumeSliderService : Service() {
         leftViewParams?.gravity = Gravity.START or Gravity.CENTER_VERTICAL
         
         // Create left slider
+        volumeSliderLeft = VolumeSliderView(this)
         volumeSliderLeft.layoutParams = ViewGroup.LayoutParams(36, ViewGroup.LayoutParams.MATCH_PARENT)
-        volumeSliderLeft.setOnVolumeChangeListener(object : VolumeSliderView.OnVolumeChangeListener {
+        volumeSliderLeft.setOnVolumeChangeListener(object : VolumeSliderView.VolumeChangeListener {
             override fun onVolumeChanged(volumePercent: Float) {
                 changeVolume(volumePercent)
                 provideHapticFeedback()
             }
         })
         
-        // Add views based on active edge
+        
         updateActiveEdge()
     }
     
@@ -114,8 +116,7 @@ class VolumeSliderService : Service() {
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         val volumeRange = VolumeSliderView.volumeRange
 
-        // Adjust volume based on the new range
-        val newVolume = (maxVolume * volumePercent / volumeRange).toInt()
+        val newVolume = ((maxVolume.toFloat() * volumePercent) / volumeRange).toInt()
         
         // Set volume
         audioManager.setStreamVolume(
@@ -135,7 +136,6 @@ class VolumeSliderService : Service() {
     }
     
     fun setSensitivity(value: Int) {
-        sensitivity = value
         volumeSliderLeft.setSensitivity(sensitivity)
     }
     
@@ -147,26 +147,23 @@ class VolumeSliderService : Service() {
     private fun updateActiveEdge() {
         // Remove any existing views first
         try {
-        
-        try {
             windowManager.removeView(volumeSliderLeft)
         } catch (e: Exception) {
-            // View might not be attached
+
         }
         
-        // Add views based on active edge setting
         when (activeEdge) {
             "right" -> {
+              windowManager.addView(volumeSliderLeft, rightViewParams)
             }
             "left" -> {
                 windowManager.addView(volumeSliderLeft, leftViewParams)
             }
             else -> {
-                windowManager.addView(volumeSliderLeft, leftViewParams)
+               windowManager.addView(volumeSliderLeft, rightViewParams)
             }
         }
-    }
-    
+    } 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
             when (intent.action) {
@@ -182,7 +179,7 @@ class VolumeSliderService : Service() {
         
         return START_STICKY
     }
-    
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -192,8 +189,9 @@ class VolumeSliderService : Service() {
         // Clean up views
         try {
             windowManager.removeView(volumeSliderLeft)
+
         } catch (e: Exception) {
-            // Views might not be attached
+          
         }
     }
-}
+
