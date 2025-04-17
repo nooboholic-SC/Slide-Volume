@@ -136,30 +136,30 @@ class MainActivity : AppCompatActivity() {
             updateActiveEdge()
         } else {
             // Disable both edges
-            volumeSliderRight.visibility = VolumeSliderView.INVISIBLE
-            volumeSliderLeft.visibility = VolumeSliderView.INVISIBLE
+            volumeSliderRight.visibility = VolumeSliderView.View.INVISIBLE
+            volumeSliderLeft.visibility = VolumeSliderView.View.INVISIBLE
         }
     }
     
     private fun updateActiveEdge() {
         if (!serviceEnabled) {
-            volumeSliderRight.visibility = VolumeSliderView.INVISIBLE
-            volumeSliderLeft.visibility = VolumeSliderView.INVISIBLE
+            volumeSliderRight.visibility = VolumeSliderView.View.INVISIBLE
+            volumeSliderLeft.visibility = VolumeSliderView.View.INVISIBLE
             return
         }
         
         when (activeEdge) {
             "right" -> {
-                volumeSliderRight.visibility = VolumeSliderView.VISIBLE
-                volumeSliderLeft.visibility = VolumeSliderView.INVISIBLE
+                volumeSliderRight.visibility = VolumeSliderView.View.VISIBLE
+                volumeSliderLeft.visibility = VolumeSliderView.View.INVISIBLE
             }
             "left" -> {
-                volumeSliderRight.visibility = VolumeSliderView.INVISIBLE
-                volumeSliderLeft.visibility = VolumeSliderView.VISIBLE
+                volumeSliderRight.visibility = VolumeSliderView.View.INVISIBLE
+                volumeSliderLeft.visibility = VolumeSliderView.View.VISIBLE
             }
             "both" -> {
-                volumeSliderRight.visibility = VolumeSliderView.VISIBLE
-                volumeSliderLeft.visibility = VolumeSliderView.VISIBLE
+                volumeSliderRight.visibility = VolumeSliderView.View.VISIBLE
+                volumeSliderLeft.visibility = VolumeSliderView.View.VISIBLE
             }
         }
     }
