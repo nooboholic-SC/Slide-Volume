@@ -45,21 +45,22 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        connectButton.setOnClickListener {
-            serverIp = ipInput.text.toString()
-            Toast.makeText(this, "Connecting to : $serverIp", Toast.LENGTH_SHORT).show()
-        }
-        serviceButton.setOnClickListener {
-            if (serviceEnabled) {
-                toggleService(false)
-                serviceButton.text = "Start service"
-            } else {
-                toggleService(true)
-                serviceButton.text = "Stop service"
-            }
-            serviceEnabled = !serviceEnabled
-            updateServiceSettings()
-        }
+       //connectButton.setOnClickListener {
+        //serverIp = ipInput.text.toString()
+        //Toast.makeText(this, "Connecting to : $serverIp", Toast.LENGTH_SHORT).show()
+       // }
+       
+   //     serviceButton.setOnClickListener {
+   //         if (serviceEnabled) {
+   //             toggleService(false)
+   //             serviceButton.text = "Start service"
+   //         } else {
+   //             toggleService(true)
+   //             serviceButton.text = "Stop service"
+   //         }
+   //         serviceEnabled = !serviceEnabled
+   //         updateServiceSettings()
+   //     }
     }
     
   private lateinit var ipInput: android.widget.EditText
