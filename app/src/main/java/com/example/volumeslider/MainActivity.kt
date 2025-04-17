@@ -26,9 +26,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Initialize variables
-        ipInput = findViewById(R.id.server_ip_input)
-        val connectButton: Button = findViewById(R.id.connect_button)
-        val serviceButton: Button = findViewById(R.id.service_button)
+        //ipInput = findViewById(R.id.server_ip_input)
+        //val connectButton: Button = findViewById(R.id.connect_button)
+        //val serviceButton: Button = findViewById(R.id.service_button)
         
         // Check for overlay permission
         checkOverlayPermission()
