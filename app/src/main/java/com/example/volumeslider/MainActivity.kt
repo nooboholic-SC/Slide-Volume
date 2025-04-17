@@ -98,23 +98,23 @@ class MainActivity : AppCompatActivity() {
         })
     }
     
-    private fun changeVolume(volumePercent: Float) {
-        // Get max volume level
-        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        
-        // Calculate new volume level
-        val newVolume = (maxVolume * volumePercent / 100).toInt()
-        
-        // Set volume
-        audioManager.setStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            newVolume,
-            AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
-        )
-        
-        // Show current volume as a toast message
-        Toast.makeText(this, "Volume: $newVolume/$maxVolume", Toast.LENGTH_SHORT).show()
-    }
+   private fun changeVolume(volumePercent: Float) {
+    // Get max volume level
+    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    
+    // Calculate new volume level
+    val newVolume = (maxVolume * volumePercent / 100).toInt()
+    
+    // Set volume with UI flag
+    audioManager.setStreamVolume(
+        AudioManager.STREAM_MUSIC,
+        newVolume,
+        AudioManager.FLAG_SHOW_UI
+    )
+    
+    // Show current volume as a toast message
+    Toast.makeText(this, "Volume: $newVolume/$maxVolume", Toast.LENGTH_SHORT).show()
+}
     
     private fun provideHapticFeedback() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
