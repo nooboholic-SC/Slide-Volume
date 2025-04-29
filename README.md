@@ -7,7 +7,7 @@
 ## ✨ Features
 
 - 🔊 **Swipe to change volume** – Smoothly increase or decrease volume by swiping up or down along the edge of your screen
-- 🎚️ **Customizable edge area** – Set which edge to use and how wide the gesture area should be *(coming soon)*
+- 🎚️ **Customizable edge area** – Set which edge to use and how wide the gesture area should be 
 - ⚙️ **Runs in background** – Lightweight and battery-friendly
 - 📶 **Works globally** – Control volume from any app
 - 🚫 **No root required**
